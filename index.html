@@ -30,7 +30,7 @@
   <main>
     <div id="card" class="card">
       <div id="progress"></div>
-      <div id="content"></div>
+      <div id="content">CSV を読み込み中…</div>
     </div>
   </main>
   <footer>CSV ファイル (sapix_150.csv) を同じディレクトリに置いてください</footer>
@@ -42,16 +42,25 @@
 
   // CSV を読み込む
   fetch('sapix_150.csv')
-    .then(r => r.text())
+    .then(r => {
+      if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
+      return r.text();
+    })
     .then(text => {
-      allCards = text.trim().split(/\r?\n/).map(line => {
-        const [event, year] = line.split(',');
-        return { event: event.trim(), year: year.trim() };
-      });
+      allCards = text.split(/\r?\n/)
+        .filter(line => line.trim()) // 空行除去
+        .map(line => {
+          const parts = line.split(',');
+          if (parts.length < 2) return null; // フォーマット不正行スキップ
+          const [event, year] = parts;
+          return { event: event.trim(), year: year.trim() };
+        })
+        .filter(Boolean);
+      if (allCards.length === 0) throw new Error('CSV に有効なデータがありません');
       startSession();
     })
     .catch(err => {
-      document.getElementById('content').innerHTML = 'CSV を読み込めませんでした: ' + err.message;
+      document.getElementById('content').innerHTML = '<p style="color:red">CSV を読み込めません: ' + err.message + '</p>';
     });
 
   function startSession() {
