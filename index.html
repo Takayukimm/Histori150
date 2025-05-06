@@ -1,0 +1,122 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>歴史年号フラッシュカード</title>
+  <style>
+    * { box-sizing: border-box; font-family: system-ui, sans-serif; }
+    body { margin: 0; display: flex; flex-direction: column; min-height: 100vh; background: #f4f4f4; }
+    header { padding: 1rem; background: #222; color: #fff; text-align: center; }
+    main { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 1rem; }
+    .card { background: #fff; border-radius: 1rem; box-shadow: 0 4px 10px rgba(0,0,0,.1); max-width: 480px; width: 100%; padding: 2rem; text-align: center; }
+    .question { font-size: 1.25rem; margin-bottom: 1.5rem; }
+    .answer { font-size: 2rem; font-weight: bold; margin-bottom: 1.5rem; color: #007acc; }
+    .btn { display: inline-block; padding: .75rem 1.25rem; margin: .5rem; border: none; border-radius: .5rem; font-size: 1rem; cursor: pointer; transition: transform .15s ease; }
+    .btn:hover { transform: translateY(-2px); }
+    .primary { background: #007acc; color: #fff; }
+    .覚えた { background: #2ecc71; color: #fff; }
+    .惜しい { background: #f1c40f; color: #222; }
+    .全然 { background: #e74c3c; color: #fff; }
+    footer { padding: 0.5rem; text-align: center; font-size: .875rem; color: #666; }
+    #stats table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    #stats th, #stats td { padding: .75rem; border-bottom: 1px solid #ddd; }
+    #stats th { background: #fafafa; }
+  </style>
+</head>
+<body>
+  <header>歴史年号フラッシュカード</header>
+  <main>
+    <div id="card" class="card">
+      <div id="progress"></div>
+      <div id="content"></div>
+    </div>
+  </main>
+  <footer>CSV ファイル (sapix_150.csv) を同じディレクトリに置いてください</footer>
+
+<script>
+  // アプリ状態
+  let allCards = [];
+  let session = null;
+
+  // CSV を読み込む
+  fetch('sapix_150.csv')
+    .then(r => r.text())
+    .then(text => {
+      allCards = text.trim().split(/\r?\n/).map(line => {
+        const [event, year] = line.split(',');
+        return { event: event.trim(), year: year.trim() };
+      });
+      startSession();
+    })
+    .catch(err => {
+      document.getElementById('content').innerHTML = 'CSV を読み込めませんでした: ' + err.message;
+    });
+
+  function shuffle(array) {
+    return array.sort(() => Math.random() - 0.5);
+  }
+
+  function startSession() {
+    const deck = shuffle([...allCards]).slice(0, 30);
+    session = {
+      deck,
+      index: 0,
+      showAnswer: false,
+      stats: { '覚えた': 0, '惜しい': 0, '全然': 0 }
+    };
+    render();
+  }
+
+  function render() {
+    const content = document.getElementById('content');
+    const progress = document.getElementById('progress');
+
+    if (session.index >= session.deck.length) {
+      // 終了統計
+      progress.textContent = '結果';
+      content.innerHTML = `<div id="stats">
+        <p>30問が終了しました。</p>
+        <table>
+          <tr><th>評価</th><th>回数</th></tr>
+          ${Object.entries(session.stats).map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}
+        </table>
+        <button class="btn primary" onclick="startSession()">もう一度</button>
+      </div>`;
+      return;
+    }
+
+    const card = session.deck[session.index];
+    progress.textContent = \`\${session.index + 1} / \${session.deck.length}\`;
+
+    if (!session.showAnswer) {
+      content.innerHTML = \`
+        <div class="question">\${card.event}</div>
+        <button class="btn primary" onclick="reveal()">答えを見る</button>
+      \`;
+    } else {
+      content.innerHTML = \`
+        <div class="question">\${card.event}</div>
+        <div class="answer">\${card.year}</div>
+        <div>
+          \${['覚えた', '惜しい', '全然'].map(l => \`<button class="btn \${l}" onclick="rate('\${l}')">\${l}</button>\`).join('')}
+        </div>
+      \`;
+    }
+  }
+
+  function reveal() {
+    session.showAnswer = true;
+    render();
+  }
+
+  function rate(level) {
+    session.stats[level]++;
+    session.index++;
+    session.showAnswer = false;
+    render();
+  }
+</script>
+</body>
+</html>
