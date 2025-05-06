@@ -54,12 +54,15 @@
       document.getElementById('content').innerHTML = 'CSV を読み込めませんでした: ' + err.message;
     });
 
-  function shuffle(array) {
-    return array.sort(() => Math.random() - 0.5);
-  }
-
   function startSession() {
-    const deck = shuffle([...allCards]).slice(0, 30);
+    const setSize = 30;
+    const totalSets = Math.floor(allCards.length / setSize);
+    let lastSet = Number(localStorage.getItem('lastSetIndex') || -1);
+    const setIndex = (lastSet + 1) % totalSets; // 順番に回す
+    localStorage.setItem('lastSetIndex', setIndex);
+
+    const deck = allCards.slice(setIndex * setSize, (setIndex + 1) * setSize); // 連続した30問
+
     session = {
       deck,
       index: 0,
@@ -82,27 +85,27 @@
           <tr><th>評価</th><th>回数</th></tr>
           ${Object.entries(session.stats).map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}
         </table>
-        <button class="btn primary" onclick="startSession()">もう一度</button>
+        <button class="btn primary" onclick="startSession()">次の30問へ</button>
       </div>`;
       return;
     }
 
     const card = session.deck[session.index];
-    progress.textContent = \`\${session.index + 1} / \${session.deck.length}\`;
+    progress.textContent = `${session.index + 1} / ${session.deck.length}`;
 
     if (!session.showAnswer) {
-      content.innerHTML = \`
-        <div class="question">\${card.event}</div>
+      content.innerHTML = `
+        <div class="question">${card.event}</div>
         <button class="btn primary" onclick="reveal()">答えを見る</button>
-      \`;
+      `;
     } else {
-      content.innerHTML = \`
-        <div class="question">\${card.event}</div>
-        <div class="answer">\${card.year}</div>
+      content.innerHTML = `
+        <div class="question">${card.event}</div>
+        <div class="answer">${card.year}</div>
         <div>
-          \${['覚えた', '惜しい', '全然'].map(l => \`<button class="btn \${l}" onclick="rate('\${l}')">\${l}</button>\`).join('')}
+          ${['覚えた', '惜しい', '全然'].map(l => `<button class="btn ${l}" onclick="rate('${l}')">${l}</button>`).join('')}
         </div>
-      \`;
+      `;
     }
   }
 
